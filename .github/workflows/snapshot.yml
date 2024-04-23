@@ -3,7 +3,7 @@ name: Build Snapshots
 on:
   push:
     branches:
-      - '**'
+      - "**"
 
 jobs:
   goreleaser:
