@@ -7,9 +7,8 @@ import (
 
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
-	"gopkg.in/resty.v1"
 
-	kc "github.com/ricardo-ch/go-kafka-connect/v3/lib/connectors"
+	kc "github.com/palkx/go-kafka-connect/v3/lib/connectors"
 )
 
 func Provider() *schema.Provider {
@@ -21,6 +20,15 @@ func Provider() *schema.Provider {
 				Optional:    true,
 				DefaultFunc: schema.EnvDefaultFunc("KAFKA_CONNECT_URL", ""),
 			},
+			"headers": {
+				Type: schema.TypeMap,
+				Elem: &schema.Schema{
+					Type: schema.TypeString,
+				},
+				Optional: true,
+				// No DefaultFunc here to read from the env on account of this issue:
+				// https://github.com/hashicorp/terraform-plugin-sdk/issues/142
+			},
 			"basic_auth_username": {
 				Type:        schema.TypeString,
 				Optional:    true,
@@ -31,34 +39,25 @@ func Provider() *schema.Provider {
 				Optional:    true,
 				DefaultFunc: schema.EnvDefaultFunc("KAFKA_CONNECT_BASIC_AUTH_PASSWORD", ""),
 			},
-			"tls_auth_crt": {
-				Type:        schema.TypeString,
-				Optional:    true,
-				DefaultFunc: schema.EnvDefaultFunc("KAFKA_CONNECT_TLS_AUTH_CRT", ""),
-			},
-			"tls_auth_key": {
-				Type:        schema.TypeString,
-				Optional:    true,
-				DefaultFunc: schema.EnvDefaultFunc("KAFKA_CONNECT_TLS_AUTH_KEY", ""),
-			},
-			"tls_auth_is_insecure": {
+			"tls_skip_insecure": {
 				Type:        schema.TypeBool,
 				Optional:    true,
-				DefaultFunc: schema.EnvDefaultFunc("KAFKA_CONNECT_TLS_IS_INSECURE", ""),
+				DefaultFunc: schema.EnvDefaultFunc("KAFKA_CONNECT_TLS_IS_INSECURE", false),
 			},
-			"ssl_root_ca_file": {
+			"tls_root_ca_path": {
 				Type:        schema.TypeString,
 				Optional:    true,
-				DefaultFunc: schema.EnvDefaultFunc("KAFKA_CONNECT_SSL_ROOT_CA_FILE", ""),
+				DefaultFunc: schema.EnvDefaultFunc("KAFKA_CONNECT_SSL_ROOT_CA_FILE_PATH", ""),
 			},
-			"headers": {
-				Type: schema.TypeMap,
-				Elem: &schema.Schema{
-					Type: schema.TypeString,
-				},
-				Optional: true,
-				// No DefaultFunc here to read from the env on account of this issue:
-				// https://github.com/hashicorp/terraform-plugin-sdk/issues/142
+			"tls_auth_crt_path": {
+				Type:        schema.TypeString,
+				Optional:    true,
+				DefaultFunc: schema.EnvDefaultFunc("KAFKA_CONNECT_TLS_AUTH_CRT_PATH", ""),
+			},
+			"tls_auth_key_path": {
+				Type:        schema.TypeString,
+				Optional:    true,
+				DefaultFunc: schema.EnvDefaultFunc("KAFKA_CONNECT_TLS_AUTH_KEY_PATH", ""),
 			},
 		},
 		ConfigureContextFunc: providerConfigure,
@@ -80,32 +79,34 @@ func providerConfigure(ctx context.Context, d *schema.ResourceData) (interface{}
 		c.SetBasicAuth(user, pass)
 	}
 
-	crt := d.Get("tls_auth_crt").(string)
-	key := d.Get("tls_auth_key").(string)
-	is_insecure := d.Get("tls_auth_is_insecure").(bool)
-	log.Printf("[INFO]Cert : %s\nKey: %s", crt, key)
-	log.Printf("[INFO]SSl connection is insecure : %t", is_insecure)
-	ssl_root_ca_file := d.Get("ssl_root_ca_file").(string)
-	if ssl_root_ca_file != "" {
-		resty.SetRootCertificate(ssl_root_ca_file)
+	ca_path := d.Get("tls_root_ca_path").(string)
+	crt_path := d.Get("tls_auth_crt_path").(string)
+	key_path := d.Get("tls_auth_key_path").(string)
+	is_tls_insecure := d.Get("tls_skip_insecure").(bool)
+
+	if ca_path != "" {
+		c.SetRootCertificate(ca_path)
+		log.Printf("[INFO] CA : %s\n", ca_path)
+	}
+
+	if crt_path != "" && key_path != "" {
+		cert, err := tls.LoadX509KeyPair(crt_path, key_path)
+		if err != nil {
+			log.Fatalf("[ERROR] client: loadkeys: %s", err)
+		} else {
+			if is_tls_insecure {
+				log.Printf("[WARN] SSl connection is insecure : %t", is_tls_insecure)
+				c.SetInsecureSSL()
+			}
+			log.Printf("[INFO] Cert : %s\nKey: %s", crt_path, key_path)
+			c.SetClientCertificates(cert)
+		}
 	}
 
 	headers := d.Get("headers").(map[string]interface{})
 	if headers != nil {
 		for k, v := range headers {
 			c.SetHeader(k, v.(string))
-		}
-	}
-
-	if crt != "" && key != "" {
-		cert, err := tls.LoadX509KeyPair(crt, key)
-		if err != nil {
-			log.Fatalf("client: loadkeys: %s", err)
-		} else {
-			if is_insecure {
-				c.SetInsecureSSL()
-			}
-			c.SetClientCertificates(cert)
 		}
 	}
 

@@ -1,0 +1,21 @@
+---
+version: "3"
+
+services:
+  builder:
+    build:
+      context: ./docker/local-builder/
+      args:
+        USER_ID: $UID
+        GROUP_ID: $GID
+    environment:
+      GOOS: ${GOOS}
+      GOARCH: ${GOARCH}
+    volumes:
+      - ./:/app:rw
+    command:
+      - -c
+      - |
+        cd /app || exit 1
+        go clean
+        go build

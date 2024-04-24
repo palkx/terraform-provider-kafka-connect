@@ -6,7 +6,7 @@ import (
 	"log"
 
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
-	kc "github.com/ricardo-ch/go-kafka-connect/v3/lib/connectors"
+	kc "github.com/palkx/go-kafka-connect/v3/lib/connectors"
 )
 
 func kafkaConnectorResource() *schema.Resource {
@@ -43,7 +43,6 @@ func kafkaConnectorResource() *schema.Resource {
 }
 
 func setNameFromID(d *schema.ResourceData, meta interface{}) ([]*schema.ResourceData, error) {
-
 	connectorName := d.Id()
 	log.Printf("Import connector with name: %s", connectorName)
 	d.Set("name", connectorName)
@@ -130,9 +129,9 @@ func connectorUpdate(d *schema.ResourceData, meta interface{}) error {
 
 	if err == nil {
 		newConfFiltered := removeSecondKeysFromFirst(conn.Config, sensitiveCache)
-		//log.Printf("[INFO] Full config received from update is: %v", conn.Config)
+		// log.Printf("[INFO] Full config received from update is: %v", conn.Config)
 		log.Printf("[INFO] Local config nonsensitive updated to: %v", newConfFiltered)
-		//log.Printf("[INFO] Local config_sensitive updated to:  %v", sensitiveCache)
+		// log.Printf("[INFO] Local config_sensitive updated to:  %v", sensitiveCache)
 		d.Set("config", newConfFiltered)
 		d.Set("config_sensitive", sensitiveCache)
 	}
@@ -155,9 +154,8 @@ func connectorRead(d *schema.ResourceData, meta interface{}) error {
 
 	log.Printf("[INFO] Attempting to read remote data for connector %s", name)
 	log.Printf("[INFO] Current local config nonsensitive values are: %v", config)
-	//log.Printf("[INFO] Current local config_sensitive values are: %v", sensitiveCache)
+	// log.Printf("[INFO] Current local config_sensitive values are: %v", sensitiveCache)
 	conn, err := c.GetConnector(req)
-
 	if err != nil {
 		return err
 	}
@@ -168,7 +166,7 @@ func connectorRead(d *schema.ResourceData, meta interface{}) error {
 	d.Set("config_sensitive", sensitiveCache)
 	d.Set("config", newConfFiltered)
 	log.Printf("[INFO] Local config nonsensitive data updated to %v", newConfFiltered)
-	//log.Printf("[INFO] Local config_sensitive data updated to %v", sensitiveCache)
+	// log.Printf("[INFO] Local config_sensitive data updated to %v", sensitiveCache)
 
 	return nil
 }

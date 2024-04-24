@@ -47,15 +47,16 @@ resource "kafka-connect_connector" "sqlite-sink" {
 
 ## Provider Properties
 
-| Property               | Type              | Example                 | Alternative environment variable name |
-| ---------------------- | ----------------- | ----------------------- | ------------------------------------- |
-| `url`                  | URL               | "http://localhost:8083" | `KAFKA_CONNECT_URL`                   |
-| `basic_auth_username`  | String            | "user"                  | `KAFKA_CONNECT_BASIC_AUTH_USERNAME`   |
-| `basic_auth_password`  | String            | "password"              | `KAFKA_CONNECT_BASIC_AUTH_PASSWORD`   |
-| `tls_auth_crt`         | String            | "certificate"           | `KAFKA_CONNECT_TLS_AUTH_CRT`          |
-| `tls_auth_key`         | String            | "Key"                   | `KAFKA_CONNECT_TLS_AUTH_KEY`          |
-| `tls_auth_is_insecure` | String            | "Key"                   | `KAFKA_CONNECT_TLS_IS_INSECURE`       |
-| `headers`              | Map[String]String | {foo = "bar"}           | N/A                                   |
+| Property              | Type              | Example                 | Alternative environment variable name |
+| --------------------- | ----------------- | ----------------------- | ------------------------------------- |
+| `url`                 | URL               | "http://localhost:8083" | `KAFKA_CONNECT_URL`                   |
+| `headers`             | Map[String]String | {foo = "bar"}           | N/A                                   |
+| `basic_auth_username` | String            | "user"                  | `KAFKA_CONNECT_BASIC_AUTH_USERNAME`   |
+| `basic_auth_password` | String            | "password"              | `KAFKA_CONNECT_BASIC_AUTH_PASSWORD`   |
+| `tls_skip_insecure`   | Bool              | false                   | `KAFKA_CONNECT_TLS_IS_INSECURE`       |
+| `tls_root_ca_path`    | String            | "/path/to/ca-cert.pem"  | `KAFKA_CONNECT_SSL_ROOT_CA_FILE_PATH` |
+| `tls_auth_crt_path`   | String            | "/path/to/cert.pem"     | `KAFKA_CONNECT_TLS_AUTH_CRT_PATH`     |
+| `tls_auth_key_path`   | String            | "/path/to/key.pem"      | `KAFKA_CONNECT_TLS_AUTH_KEY_PATH`     |
 
 ## Resource Properties
 
@@ -76,6 +77,10 @@ resource "kafka-connect_connector" "sqlite-sink" {
 2. Build the provider `make build`
 3. Run the tests `make test`
 4. Run acceptance tests `make testacc`
+
+One time compilation with docker:
+
+1. `env UID=$(id -u) GID=$(id -g) GOOS=$(uname -o | tr '[:upper:]' '[:lower:]') GOARCH=$(uname -m) docker compose -f local-build.yml up --build`
 
 [1]: https://www.terraform.io
 [2]: https://kafka.apache.org/documentation/#connect
